@@ -1,0 +1,12 @@
+genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
+gencert = $(TORDIR)/src/tools/tor-gencert
+get_port = $$(($(2) + `echo $(1) | cut -f2 -d_ | sed -e s/^0*//`))
+genenv = env -i \
+	ORPORT=$$($$(@D)/orport) \
+	DIRPORT=$$($$(@D)/dirport) \
+	SOCKSPORT=$$($$(@D)/socksport) \
+	NUM=$$($$(@D)/id) \
+  DIR=$$($$(@D)/dir) \
+	NICK=$$($$(@D)/nick) \
+	CONNLIMIT=$$($$(@D)/connlimit) \
+	TOR=$$($$(@D)/tor)
