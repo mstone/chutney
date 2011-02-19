@@ -9,4 +9,5 @@ Nickname $NICK
 ShutdownWaitLength 0
 PidFile pid
 Log notice file $DIR/notice.log
+ControlPort $CONTROLPORT
 EOF
