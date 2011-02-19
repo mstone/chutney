@@ -13,24 +13,25 @@ SUFFIXES :=
 # Configuration
 
 TORDIR = $(HOME)/tor
-TOR ?= $(HOME)/tor/src/or/tor
+TOR ?= $(TORDIR)/src/or/tor
 TORFLAGS ?= --quiet
+START ?= cd $$(@D); $$($$(@D)/tor) $$($$(@D)/torflags) -f $$($$(@D)/torrc) &
 
 BASE_OR_PORT = 3000
 BASE_DIR_PORT = 4000
 BASE_SOCKS_PORT = 5000
 BASE_CONTROL_PORT = 6000
 
-AUTHORITIES ?= a_01 a_02 a_03 a_04 a_05 a_06 a_07 a_08 a_09 a_10
-RELAYS      ?= r_11 r_12 r_13 r_14 r_15 r_16 r_17 r_18 r_19 r_20
-CLIENTS     ?= c_21 c_22 c_23 c_24 c_25 c_26 c_27 c_28 c_29 c_30
+AUTHORITIES ?= $(patsubst %,a_%,$(shell seq 0 4))
+RELAYS      ?= $(patsubst %,r_%,$(shell seq 5 9))
+CLIENTS     ?= $(patsubst %,c_%,$(shell seq 10 14))
 
 
 # Helpers
 
 genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
 gencert = $(TORDIR)/src/tools/tor-gencert
-get_port = $$(($(2) + `echo $(1) | cut -f2 -d_ | sed -e s/^0*//`))
+get_port = $$(($(2) + `echo $(1) | cut -f2 -d_`))
 genenv = env -i \
 	ORPORT=$$($$(@D)/orport) \
 	DIRPORT=$$($$(@D)/dirport) \
@@ -46,7 +47,7 @@ genenv = env -i \
 # Macros
 
 define common_macro
-$$(P)/dir ?= $$(@D)
+$$(P)/dir ?= .
 $$(P)/nick ?= $$(shell echo $$(@D) | sed -e s/_//)
 $$(P)/id ?= $$(shell echo $$(call get_port,$(1),0))
 $$(P)/orport ?= $$(shell echo $$(call get_port,$(1),$(BASE_OR_PORT)))
@@ -60,14 +61,15 @@ $$(P)/connlimit ?= 1
 $$(P)/tor ?= $(TOR)
 $$(P)/torflags ?= $(TORFLAGS)
 $$(P)/gencert ?= $(gencert)
-$$(P)/cert ?= $$(@D)/$$(@D)/keys/authority_certificate
-$$(P)/sig_key ?= $$(@D)/$$(@D)/keys/authority_signing_key
-$$(P)/id_key ?= $$(@D)/$$(@D)/keys/identity_key
+$$(P)/cert ?= keys/authority_certificate
+$$(P)/sig_key ?= keys/authority_signing_key
+$$(P)/id_key ?= keys/identity_key
 $$(P)/torrc ?= $$(PWD)/$$(@D)/torrc
+$$(P)/start ?= $(START)
 
 .PHONY: $$(P)/start
 $$(P)/start: $$(P)/torrc
-	$$($$(@D)/tor) $$($$(@D)/torflags) -f $(PWD)/$$(@D)/torrc &
+	$$($$(@D)/start)
 
 $$(P)/torrc: dirservers
 	mkdir -p $$(@D)
@@ -84,21 +86,21 @@ $$(P)/gen_torrc ?= ./torrc_authority.sh
 $(call common_macro,$(1))
 
 $$(P)/cert:
-	mkdir -p $$(@D)/$$(@D)/keys
+	mkdir -p $$(@D)/keys
 	$$(genupasswd) > $$(@D)/pass
-	cat $$(@D)/pass | $$($$(@D)/gencert) --create-identity-key \
+	cd $$(@D); cat pass | $$($$(@D)/gencert) --create-identity-key \
 		-i $$($$(@D)/id_key) -s $$($$(@D)/sig_key) -c $$($$(@D)/cert) \
 		-m $$($$(@D)/lifetime) -a $$($$(@D)/addr) --passphrase-fd 0
 	touch $$@
 
 $$(P)/v3id: $$(P)/cert
-	grep fingerprint $$($$(@D)/cert) | cut -f 2 -d " " > $$@
+	grep fingerprint $$(@D)/$$($$(@D)/cert) | cut -f 2 -d " " > $$@
 
 $$(P)/fp: $$(P)/cert
 	(cd $$(@D); \
 		echo "DirServer test 127.0.0.1:1 0000000000000000000000000000000000000000" >> torrc.tmp; \
 		echo "OrPort 1" >> torrc.tmp; \
-		$$($$(@D)/tor) --quiet --list-fingerprint --DataDirectory $$(@D) \
+		$$($$(@D)/tor) --quiet --list-fingerprint --DataDirectory . \
 			-f torrc.tmp | cut -f2- -d' ' | sed -e 's/ //g'; \
 		rm torrc.tmp &>/dev/null;) > $$@
 
@@ -150,10 +152,20 @@ NODES := $(AUTHORITIES) $(RELAYS) $(CLIENTS)
 
 all: $(patsubst %,%/torrc,$(NODES))
 
-start: $(patsubst %,%/start,$(NODES))
+start stop hup log: WORK=.
+start-% stop-% hup-% log-%: WORK=$(wildcard $*)
 
-stop:
-	find . -name pid -exec cat {} + | xargs kill
+start start-%:
+	@$(MAKE) $(patsubst %/torrc,%/start,$(shell find $(WORK) -name 'torrc'))
+
+stop stop-%:
+	find $(WORK) -name pid -exec cat {} + | xargs kill
+
+hup hup-%:
+	find $(WORK) -name pid -exec cat {} + | xargs kill -HUP
+
+log log-%:
+	find $(WORK) -name 'notice.log' -print0 | xargs -0 sh -c 'multitail "$$@" < /dev/tty' multitail
 
 clean:
 	rm -rf $(CLEAN)
