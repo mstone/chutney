@@ -10,25 +10,29 @@
 .SUFFIXES:
 SUFFIXES :=
 
+# Enable secondary expansion of prerequisites
+.SECONDEXPANSION:
 
 # Configuration
+
+-include $(CONFIG)
 
 N = $$(@D)
 TYPES ?= $(BASE_TYPES)
 FIELDS ?= $(BASE_FIELDS)
-NODES  = $(foreach t,$(TYPES),$($(t)))
+NODES  ?= $(foreach t,$(TYPES),$($(t)))
 
-TORDIR = $(HOME)/tor
+TORDIR ?= $(HOME)/tor
 TOR ?= $(TORDIR)/src/or/tor
 TORFLAGS ?= --quiet
 START ?= cd $N; $(N.tor) $(N.torflags) -f $(N.torrc) &
 
-BASE_OR_PORT = 3000
-BASE_DIR_PORT = 4000
-BASE_SOCKS_PORT = 5000
-BASE_CONTROL_PORT = 6000
-BASE_TYPES = AUTHS RELAYS CLIENTS
-BASE_FIELDS = dir nick id orport dirport socksport controlport ip addr lifetime \
+BASE_OR_PORT ?= 3000
+BASE_DIR_PORT ?= 4000
+BASE_SOCKS_PORT ?= 5000
+BASE_CONTROL_PORT ?= 6000
+BASE_TYPES ?= AUTHS RELAYS CLIENTS
+BASE_FIELDS ?= dir nick id orport dirport socksport controlport ip addr lifetime \
 	connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc
 
 AUTHS   ?= $(patsubst %,a_%,$(shell seq 0 4))
@@ -38,10 +42,10 @@ CLIENTS ?= $(patsubst %,c_%,$(shell seq 10 14))
 
 # Helpers
 
-genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
-gencert = $(TORDIR)/src/tools/tor-gencert
-genport = $$(($(2) + `echo $(1) | cut -f2 -d_`))
-genenv = env -i $(foreach f,$(FIELDS),"$(f)=$(N.$(f))")
+genupasswd ?= python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
+gencert ?= $(TORDIR)/src/tools/tor-gencert
+genport ?= $$(($(2) + `echo $(1) | cut -f2 -d_`))
+genenv ?= env -i $(foreach f,$(FIELDS),"$(f)=$(N.$(f))")
 
 
 # Macros
@@ -116,7 +120,7 @@ $$(P)/dirserver: $$(P)/v3id $$(P)/fp
 	echo -n "DirServer $(N.nick) v3ident=`cat $N/v3id`" >> $$@
 	echo " orport=$(N.orport) no-v2 $(N.addr) `cat $N/fp`" >> $$@
 
-CERTS := $$(CERTS) $$(P)/cert
+DIRSERVERS := $$(DIRSERVERS) $$(P)/dirserver
 P :=
 endef
 
@@ -140,7 +144,7 @@ endef
 
 ## -------------
 
-dirservers: $(patsubst %,%/dirserver,$(AUTHS))
+dirservers: $$(DIRSERVERS)
 	cat $^ > $@
 CLEAN := $(CLEAN) dirservers
 
