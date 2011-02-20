@@ -13,6 +13,10 @@ SUFFIXES :=
 # Configuration
 
 N = $$(@D)
+TYPES ?= $(BASE_TYPES)
+FIELDS ?= $(BASE_FIELDS)
+NODES  = $(foreach t,$(TYPES),$($(t)))
+
 TORDIR = $(HOME)/tor
 TOR ?= $(TORDIR)/src/or/tor
 TORFLAGS ?= --quiet
@@ -22,38 +26,35 @@ BASE_OR_PORT = 3000
 BASE_DIR_PORT = 4000
 BASE_SOCKS_PORT = 5000
 BASE_CONTROL_PORT = 6000
+BASE_TYPES = AUTHS RELAYS CLIENTS
+BASE_FIELDS = dir nick id orport dirport socksport controlport ip addr lifetime \
+	connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc
 
-AUTHORITIES ?= $(patsubst %,a_%,$(shell seq 0 4))
-RELAYS      ?= $(patsubst %,r_%,$(shell seq 5 9))
-CLIENTS     ?= $(patsubst %,c_%,$(shell seq 10 14))
-
+AUTHS   ?= $(patsubst %,a_%,$(shell seq 0 4))
+RELAYS  ?= $(patsubst %,r_%,$(shell seq 5 9))
+CLIENTS ?= $(patsubst %,c_%,$(shell seq 10 14))
 
 # Helpers
 
 genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
 gencert = $(TORDIR)/src/tools/tor-gencert
-get_port = $$(($(2) + `echo $(1) | cut -f2 -d_`))
-genenv = env -i $(foreach f,$(ALLFIELDS),"$(f)=$(N.$(f))")
+genport = $$(($(2) + `echo $(1) | cut -f2 -d_`))
+genenv = env -i $(foreach f,$(FIELDS),"$(f)=$(N.$(f))")
 
 # Macros
 
-ALLFIELDS = dir nick id orport dirport socksport controlport ip addr lifetime \
-	connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc \
-	$(FIELDS)
-define field_macro
+define FIELDS_macro
 N.$(1) = $$$$($$(N)/$(1))
 endef
-#$(foreach f,$(ALLFIELDS),$(info $(call field_macro,$(f))))
-$(foreach f,$(ALLFIELDS),$(eval $(call field_macro,$(f))))
 
-define common_macro
+define COMMON_macro
 $$(P)/dir ?= .
 $$(P)/nick ?= $$(shell echo $N | sed -e s/_//)
-$$(P)/id ?= $$(shell echo $$(call get_port,$(1),0))
-$$(P)/orport ?= $$(shell echo $$(call get_port,$(1),$(BASE_OR_PORT)))
-$$(P)/dirport ?= $$(shell echo $$(call get_port,$(1),$(BASE_DIR_PORT)))
-$$(P)/socksport ?= $$(shell echo $$(call get_port,$(1),$(BASE_SOCKS_PORT)))
-$$(P)/controlport ?= $$(shell echo $$(call get_port,$(1),$(BASE_CONTROL_PORT)))
+$$(P)/id ?= $$(shell echo $$(call genport,$(1),0))
+$$(P)/orport ?= $$(shell echo $$(call genport,$(1),$(BASE_OR_PORT)))
+$$(P)/dirport ?= $$(shell echo $$(call genport,$(1),$(BASE_DIR_PORT)))
+$$(P)/socksport ?= $$(shell echo $$(call genport,$(1),$(BASE_SOCKS_PORT)))
+$$(P)/controlport ?= $$(shell echo $$(call genport,$(1),$(BASE_CONTROL_PORT)))
 $$(P)/ip ?= 127.0.0.1
 $$(P)/addr ?= $(N.ip):$(N.dirport)
 $$(P)/lifetime ?= 12
@@ -78,12 +79,12 @@ $$(P)/torrc: dirservers
 CLEAN := $$(CLEAN) $$(P)
 endef
 
-## Define a tor authority node
+## -------------
 
-define authority_macro
+define AUTHS_macro
 P := $(1)
 $$(P)/gen_torrc ?= ./torrc_authority.sh
-$(call common_macro,$(1))
+$(call COMMON_macro,$(1))
 
 $$(P)/cert:
 	mkdir -p $N/keys
@@ -114,42 +115,39 @@ CERTS := $$(CERTS) $$(P)/cert
 P :=
 endef
 
-## Define a tor relay node
+## -------------
 
-define relay_macro
+define RELAYS_macro
 P := $(1)
 $$(P)/gen_torrc ?= ./torrc_relay.sh
-$(call common_macro,$(1))
+$(call COMMON_macro,$(1))
 P :=
 endef
 
-## Define a client relay node
+## -------------
 
-define client_macro
+define CLIENTS_macro
 P := $(1)
 $$(P)/gen_torrc ?= ./torrc_client.sh
-$(call common_macro,$(1))
+$(call COMMON_macro,$(1))
 P :=
 endef
 
+## -------------
+
+dirservers: $(patsubst %,%/dirserver,$(AUTHS))
+	cat $^ > $@
 CLEAN := $(CLEAN) dirservers
 
-dirservers: $(patsubst %,%/dirserver,$(AUTHORITIES))
-	cat $^ > $@
+
+# Code Generation
+
+## Uncomment the next line to print generated rules and definititions
+$(foreach t,FIELDS $(TYPES),$(foreach n,$($(t)),$(info $(call $(t)_macro,$(n)))))
+$(foreach t,FIELDS $(TYPES),$(foreach n,$($(t)),$(eval $(call $(t)_macro,$(n)))))
 
 
-# Model Generation
-
-# To see what rules are being added by the macros, uncomment:
-#$(foreach n,$(AUTHORITIES),$(info $(call authority_macro,$(n))))
-#$(foreach n,$(RELAYS),$(info $(call relay_macro,$(n))))
-#$(foreach n,$(CLIENTS),$(info $(call client_macro,$(n))))
-
-$(foreach n,$(AUTHORITIES),$(eval $(call authority_macro,$(n))))
-$(foreach n,$(RELAYS),$(eval $(call relay_macro,$(n))))
-$(foreach n,$(CLIENTS),$(eval $(call client_macro,$(n))))
-
-NODES := $(AUTHORITIES) $(RELAYS) $(CLIENTS)
+# Top-level Targets
 
 all: $(patsubst %,%/torrc,$(NODES))
 
@@ -169,11 +167,11 @@ log log-%:
 	find $(WORK) -name 'notice.log' -print0 \
 	| xargs -0 sh -c 'multitail "$$@" < /dev/tty' multitail
 
-clean:
-	rm -rf $(CLEAN)
-
 pr-%:
 	@echo '$*=$($*)'
+
+clean:
+	rm -rf $(CLEAN)
 
 .PHONY: clean all start stop
 .DEFAULT_GOAL := all
