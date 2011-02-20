@@ -3,8 +3,8 @@ set -eu
 ./torrc_common.sh
 cat <<EOF
 SocksPort 0
-OrPort $ORPORT
+OrPort $orport
 Address 127.0.0.1
-DirPort $DIRPORT
+DirPort $dirport
 EOF
 cat dirservers

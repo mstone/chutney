@@ -2,12 +2,12 @@
 set -eu
 cat <<EOF
 TestingTorNetwork 1
-DataDirectory $DIR
+DataDirectory $dir
 RunAsDaemon 1
-ConnLimit $CONNLIMIT
-Nickname $NICK
+ConnLimit $connlimit
+Nickname $nick
 ShutdownWaitLength 0
 PidFile pid
-Log notice file $DIR/notice.log
-ControlPort $CONTROLPORT
+Log notice file $dir/notice.log
+ControlPort $controlport
 EOF

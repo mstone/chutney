@@ -2,6 +2,6 @@
 set -eu
 ./torrc_common.sh
 cat <<EOF
-SocksPort $SOCKSPORT
+SocksPort $socksport
 EOF
 cat dirservers

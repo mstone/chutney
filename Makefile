@@ -33,17 +33,7 @@ CLIENTS     ?= $(patsubst %,c_%,$(shell seq 10 14))
 genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
 gencert = $(TORDIR)/src/tools/tor-gencert
 get_port = $$(($(2) + `echo $(1) | cut -f2 -d_`))
-genenv = env -i \
-	ORPORT=$(N.orport) \
-	DIRPORT=$(N.dirport) \
-	SOCKSPORT=$(N.socksport) \
-	CONTROLPORT=$(N.controlport) \
-	NUM=$(N.id) \
-	DIR=$(N.dir) \
-	NICK=$(N.nick) \
-	CONNLIMIT=$(N.connlimit) \
-	TOR=$(N.tor)
-
+genenv = env -i $(foreach f,$(ALLFIELDS),"$(f)=$(N.$(f))")
 
 # Macros
 
@@ -181,6 +171,9 @@ log log-%:
 
 clean:
 	rm -rf $(CLEAN)
+
+pr-%:
+	@echo '$*=$($*)'
 
 .PHONY: clean all start stop
 .DEFAULT_GOAL := all
