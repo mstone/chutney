@@ -16,7 +16,7 @@ N = $$(@D)
 TORDIR = $(HOME)/tor
 TOR ?= $(TORDIR)/src/or/tor
 TORFLAGS ?= --quiet
-START ?= cd $N; $$($N/tor) $$($N/torflags) -f $$($N/torrc) &
+START ?= cd $N; $(N.tor) $(N.torflags) -f $(N.torrc) &
 
 BASE_OR_PORT = 3000
 BASE_DIR_PORT = 4000
@@ -34,18 +34,25 @@ genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64
 gencert = $(TORDIR)/src/tools/tor-gencert
 get_port = $$(($(2) + `echo $(1) | cut -f2 -d_`))
 genenv = env -i \
-	ORPORT=$$($N/orport) \
-	DIRPORT=$$($N/dirport) \
-	SOCKSPORT=$$($N/socksport) \
-	CONTROLPORT=$$($N/controlport) \
-	NUM=$$($N/id) \
-	DIR=$$($N/dir) \
-	NICK=$$($N/nick) \
-	CONNLIMIT=$$($N/connlimit) \
-	TOR=$$($N/tor)
+	ORPORT=$(N.orport) \
+	DIRPORT=$(N.dirport) \
+	SOCKSPORT=$(N.socksport) \
+	CONTROLPORT=$(N.controlport) \
+	NUM=$(N.id) \
+	DIR=$(N.dir) \
+	NICK=$(N.nick) \
+	CONNLIMIT=$(N.connlimit) \
+	TOR=$(N.tor)
 
 
 # Macros
+
+ALLFIELDS = dir nick id orport dirport socksport controlport ip addr lifetime connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc $(FIELDS)
+define field_macro
+N.$(1) = $$$$($$(N)/$(1))
+endef
+#$(foreach f,$(ALLFIELDS),$(info $(call field_macro,$(f))))
+$(foreach f,$(ALLFIELDS),$(eval $(call field_macro,$(f))))
 
 define common_macro
 $$(P)/dir ?= .
@@ -56,7 +63,7 @@ $$(P)/dirport ?= $$(shell echo $$(call get_port,$(1),$(BASE_DIR_PORT)))
 $$(P)/socksport ?= $$(shell echo $$(call get_port,$(1),$(BASE_SOCKS_PORT)))
 $$(P)/controlport ?= $$(shell echo $$(call get_port,$(1),$(BASE_CONTROL_PORT)))
 $$(P)/ip ?= 127.0.0.1
-$$(P)/addr ?= $$($N/ip):$$($N/dirport)
+$$(P)/addr ?= $(N.ip):$(N.dirport)
 $$(P)/lifetime ?= 12
 $$(P)/connlimit ?= 1
 $$(P)/tor ?= $(TOR)
@@ -70,11 +77,11 @@ $$(P)/start ?= $(START)
 
 .PHONY: $$(P)/start
 $$(P)/start: $$(P)/torrc
-	$$($N/start)
+	$(N.start)
 
 $$(P)/torrc: dirservers
 	mkdir -p $N
-	$(genenv) $$($N/gen_torrc) > $$@
+	$(genenv) $(N.gen_torrc) > $$@
 
 CLEAN := $$(CLEAN) $$(P)
 endef
@@ -89,26 +96,26 @@ $(call common_macro,$(1))
 $$(P)/cert:
 	mkdir -p $N/keys
 	$$(genupasswd) > $N/pass
-	cd $N; cat pass | $$($N/gencert) --create-identity-key \
-		-i $$($N/id_key) -s $$($N/sig_key) -c $$($N/cert) \
-		-m $$($N/lifetime) -a $$($N/addr) --passphrase-fd 0
+	cd $N; cat pass | $(N.gencert) --create-identity-key \
+		-i $(N.id_key) -s $(N.sig_key) -c $(N.cert) \
+		-m $(N.lifetime) -a $(N.addr) --passphrase-fd 0
 	touch $$@
 
 $$(P)/v3id: $$(P)/cert
-	grep fingerprint $N/$$($N/cert) | cut -f 2 -d " " > $$@
+	grep fingerprint $N/$(N.cert) | cut -f 2 -d " " > $$@
 
 $$(P)/fp: $$(P)/cert
 	(cd $N; \
 		echo "DirServer test 127.0.0.1:1 0000000000000000000000000000000000000000" >> torrc.tmp; \
 		echo "OrPort 1" >> torrc.tmp; \
-		$$($N/tor) --quiet --list-fingerprint --DataDirectory . \
+		$(N.tor) --quiet --list-fingerprint --DataDirectory . \
 			-f torrc.tmp | cut -f2- -d' ' | sed -e 's/ //g'; \
 		rm torrc.tmp &>/dev/null;) > $$@
 
 $$(P)/dirserver: $$(P)/v3id $$(P)/fp
 	rm -f $$@
-	echo -n "DirServer $$($N/nick) v3ident=`cat $N/v3id`" >> $$@
-	echo " orport=$$($N/orport) no-v2 $$($N/addr) `cat $N/fp`" >> $$@
+	echo -n "DirServer $(N.nick) v3ident=`cat $N/v3id`" >> $$@
+	echo " orport=$(N.orport) no-v2 $(N.addr) `cat $N/fp`" >> $$@
 
 CERTS := $$(CERTS) $$(P)/cert
 P :=
