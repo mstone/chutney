@@ -10,6 +10,7 @@
 .SUFFIXES:
 SUFFIXES :=
 
+
 # Configuration
 
 N = $$(@D)
@@ -34,6 +35,7 @@ AUTHS   ?= $(patsubst %,a_%,$(shell seq 0 4))
 RELAYS  ?= $(patsubst %,r_%,$(shell seq 5 9))
 CLIENTS ?= $(patsubst %,c_%,$(shell seq 10 14))
 
+
 # Helpers
 
 genupasswd = python -c 'print open("/dev/urandom", "rb").read(16).encode("base64").strip()'
@@ -41,11 +43,14 @@ gencert = $(TORDIR)/src/tools/tor-gencert
 genport = $$(($(2) + `echo $(1) | cut -f2 -d_`))
 genenv = env -i $(foreach f,$(FIELDS),"$(f)=$(N.$(f))")
 
+
 # Macros
 
 define FIELDS_macro
 N.$(1) = $$$$($$(N)/$(1))
 endef
+
+## -------------
 
 define COMMON_macro
 $$(P)/dir ?= .
