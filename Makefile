@@ -47,7 +47,9 @@ genenv = env -i \
 
 # Macros
 
-ALLFIELDS = dir nick id orport dirport socksport controlport ip addr lifetime connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc $(FIELDS)
+ALLFIELDS = dir nick id orport dirport socksport controlport ip addr lifetime \
+	connlimit tor torflags gencert cert sig_key id_key torrc start gen_torrc \
+	$(FIELDS)
 define field_macro
 N.$(1) = $$$$($$(N)/$(1))
 endef
@@ -106,7 +108,8 @@ $$(P)/v3id: $$(P)/cert
 
 $$(P)/fp: $$(P)/cert
 	(cd $N; \
-		echo "DirServer test 127.0.0.1:1 0000000000000000000000000000000000000000" >> torrc.tmp; \
+		echo "DirServer test 127.0.0.1:1 0000000000000000000000000000000000000000" \
+		  >> torrc.tmp; \
 		echo "OrPort 1" >> torrc.tmp; \
 		$(N.tor) --quiet --list-fingerprint --DataDirectory . \
 			-f torrc.tmp | cut -f2- -d' ' | sed -e 's/ //g'; \
@@ -173,7 +176,8 @@ hup hup-%:
 	find $(WORK) -name pid -exec cat {} + | xargs kill -HUP
 
 log log-%:
-	find $(WORK) -name 'notice.log' -print0 | xargs -0 sh -c 'multitail "$$@" < /dev/tty' multitail
+	find $(WORK) -name 'notice.log' -print0 \
+	| xargs -0 sh -c 'multitail "$$@" < /dev/tty' multitail
 
 clean:
 	rm -rf $(CLEAN)
