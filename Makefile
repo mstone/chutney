@@ -143,7 +143,7 @@ CLEAN := $(CLEAN) dirservers
 # Code Generation
 
 ## Uncomment the next line to print generated rules and definititions
-$(foreach t,FIELDS $(TYPES),$(foreach n,$($(t)),$(info $(call $(t)_macro,$(n)))))
+#$(foreach t,FIELDS $(TYPES),$(foreach n,$($(t)),$(info $(call $(t)_macro,$(n)))))
 $(foreach t,FIELDS $(TYPES),$(foreach n,$($(t)),$(eval $(call $(t)_macro,$(n)))))
 
 
