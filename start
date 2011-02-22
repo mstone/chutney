@@ -1,0 +1,3 @@
+#!/bin/sh
+for n in $(find . -name *.run | grep "${1:-.*}"); do { echo "$n &>/dev/null &" ; } done
+for n in $(find . -name *.run | grep "${1:-.*}"); do { "$n" &>/dev/null & }; done

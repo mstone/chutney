@@ -1,0 +1,3 @@
+#!/bin/sh
+find . -name *.log | grep "${1:-.*}" | xargs echo multitail
+find . -name *.log | grep "${1:-.*}" | xargs sh -c 'multitail "$@" < /dev/tty' multitail

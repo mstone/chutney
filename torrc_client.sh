@@ -1,7 +1,7 @@
-#!/bin/bash
 set -eu
-./torrc_common.sh
+redo-ifchange "$1.socksport" "dirservers" "torrc_common.sh"
+. ./torrc_common.sh
 cat <<EOF
-SocksPort $socksport
+SocksPort $(cat $1.socksport)
 EOF
 cat dirservers

@@ -1,0 +1,7 @@
+This is a port of tor-privnet to Avery Pennarun's "redo" [1].
+
+To try it out, install redo and run
+
+  ./test
+
+[1]: https://github.com/apenwarr/redo.

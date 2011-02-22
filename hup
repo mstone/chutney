@@ -1,0 +1,3 @@
+#!/bin/sh
+find . -name pid | grep "${1:-.*}" | xargs cat | xargs echo kill -HUP
+find . -name pid | grep "${1:-.*}" | xargs cat | xargs kill -HUP

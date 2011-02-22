@@ -1,0 +1,11 @@
+#!/bin/sh
+redo
+./start
+sleep 330
+./hup *relay*
+sleep 5
+./hup *client*
+sleep 5
+curl --socks5 127.0.0.1:5021 http://google.com
+sleep 5
+./stop
