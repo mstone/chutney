@@ -1,0 +1,33 @@
+
+
+[bootstrap]
+Specify N
+Specify Maxtime
+Every N seconds:
+   suceed if (bootstrapped)
+After MAXTIME seconds:
+   fail
+
+
+[still-bootstrapped]
+Specify N
+specify OkayIGuessItWorksTime  (default INFINITY)
+Every N seconds:
+   fail if not (bootstrapped)
+After OkayIGuessItWorksTime:
+   succeed
+
+
+[local-web-client]
+Specify socks method
+Specify URI
+Maybe:
+   start webserver.
+   wait up to TIME, checking (webserver up).
+
+Spawn-N, check Allof (timeout T):
+   Pick tor client X.
+   HTTP request (over socksMethod to Tor client X) for URI Y
+   Check result.
+
+

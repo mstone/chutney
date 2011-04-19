@@ -1,0 +1,60 @@
+
+launch the network
+
+launch a webserver WS
+
+[test initial-bootstrap]
+  wait up to network.bstime for the network to bootstrap.  If
+  it takes too long, that's a bug.  When it succeeds, set BOOTSTRAP.
+
+[test periodic-bootstrap]
+  See if the network still looks bootstrapped.  If not, that's a bug.
+
+[test local-web-client]
+  Parameters: SocksXX
+Requires BOOTSTRAP:
+  Multiple instances:
+    Start an http connection through
+          (socksXX via network.clientnodes().pick_at_random()
+       to our WS, and fetch some page.
+          OnSuccess: note success
+	  OnFailure: that's a bug
+
+[test google-web-client]
+  Parameters: SocksXX (enum socks4a, socks5)
+              website (e.g., http://www.google.com/)
+Requires BOOTSTRAP.
+ Can have multiple instances:
+    Start an http connection through
+         (socksXX via network.clientnodes().pick_at_random()
+       to website, and fetch some page.
+          OnSuccess: note success
+	  OnFailure: that's a bug
+
+[test orport-to-1-transition]
+Requires BOOTSTRAP:
+  Pick a node from networkstatus.clientnodes() with a control port.
+    Connect to the control port.
+      Tell it: "SETCONF ORPort <pick an unused port>".
+        OnFailure: that's a bug.
+  
+  After 2 voting intervals:
+     The node should be listed in the consensus.
+
+  [OTHER STUFF TOO?]
+
+
+[test hidden-service]
+  Parameter: SocksXX
+Requires BOOTSTRAP:
+  Pick a node with a hidden service configured.
+  Start a simple server at the port that the hidden service is
+     configured to point to.
+  Pick a client from networkstatus.clientnodes() that is not the same
+     as the first node.
+  Connect via socksXX through client.socksPort to the hidden service's
+    .onion address.
+  Over that TCP connection, say some stuff.  Verify that it arrives as
+  expected at the server side.  Verify that the server's reply arrives.
+
+

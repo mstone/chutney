@@ -1,0 +1,124 @@
+DESIGN SKETCH FOR VERSION 1:
+
+There are Tests and Invariants.
+
+There is a TestRunner that invokes tests in seq or parallel.
+
+Invariants (are supposed to) change nothing about the state of the network.
+They get run before & after each test, and in parallel with tests.  They can
+never succeed permanently; they can only fail.
+
+Tests do stuff like launch network activity, reconfigure nodes, etc. They
+succeed or fail.
+
+The TestRunner is also responsible for getting the network set up.  (?)
+
+Test cases may have annotation-like things that say stuff like:
+
+   - Make sure the network is bootstrapped before this runs.
+   - This can only run on a network that provides foo.
+   - This is expected to break Invariant Bar; don't worry.
+   - This test case is slow.
+
+The TestRunner should have a randomized mode where it runs random subsets of
+tests in random order.
+
+There needs to be an info channel from the network to the test runner saying
+what the network provides, sufficient to configure tests.
+
+This is probably going to use Twisted.
+
+We're not hiding the fact that we're using Twisted.
+
+We're not hiding the fact that tests are asynchronous and full of callbacks.
+
+
+PLAN:
+
+We want to start with a minimal set of stuff:
+
+  - A TestRunner
+  - A wait-until-bootstrapped thingie
+  - A talk-to-external-web-service test
+  - An "Are you still running" invariant.
+
+
+STUFF THAT NEEDS A LITTLE DESIGN:
+
+  - What a test looks like
+    - needs annotations
+    - needs to be parameterized somehow (from network, from test
+      parameterization).  Should be able to extract all parameters as a
+      separate call from "start testing".
+    - needs a "start testing" function
+      - Needs an easy way to:
+        - schedule stuff later
+        - have subtasks.
+        - have multiple parallel subtasks
+        - have timeouts
+        - declare that the test runs till all subtasks are done or the
+          timeout is triggered, and requires that all succeed.
+        - report results
+        - report info
+        - launch network requests
+        - declare sequencing between subtasks
+        - Have subresults.
+
+    - eventually decides that it's succeeded or failed, and cleans up.
+
+  - What a test really looks like
+    - It's an object.
+    - It has a describe method that returns its parameters and their types.
+    - It has a configure method that:
+        - Takes a state object for the whole system.
+        - Takes parameters for this test
+        - Figures out if it can run
+        - Fills in its parameters
+        - Instantiates subtasks
+    - It has a launch method that:
+        - Is called after configure
+        - launches or schedules work as needed.
+        - Eventually causes every subtask to succeed or fail
+
+  - Some helpers you will want.
+    - Run tasks in parallel, continue until all are done, succeed if they all
+      succeed.
+    - Run tasks in sequence, succeed if they all succeed, stop after first
+      failure.
+    - Task objects (wrapping code)
+    - Make X fail after timeout unless it has already succeeded or failed.
+    - Have X transition and/or say something
+
+  - What an invariant looks like
+    - Just like a test, basically.
+
+  - The channel from the network to the test runner
+    - JSON
+
+  - The user experience
+    - monolithic entry-point, called Chutney.
+
+  - The test-runner needs a really good log format.  It needs to be
+    machine-readable and human-readable, or at least have a human-readable
+    format it can get translated into.
+
+    - Events to log:
+      - Test/Task X launched.
+        - These Xs are .-separated lists of ids.  Anything that the runner
+          launches is a test.  Anything a test launches is a subtask.
+          Anything a subtask launches is a subsubtask, etc.  If Y launches
+          you, your name is Y.Z for some Z.
+
+      Test/task States:
+       - detected
+       - configured
+       - launched
+       - succeeded
+       - failed
+       - cantrun
+
+       - $thingname $state [$message]
+       - $thingname - $message
+
+
+
