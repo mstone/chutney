@@ -6,5 +6,6 @@ Nickname $nick
 ShutdownWaitLength 0
 PidFile ${dir}/pid
 Log notice file ${dir}/notice.log
+ControlPort $controlport
 ${dirservers}
 
