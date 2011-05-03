@@ -1,3 +1,8 @@
+import os, os.path, sys
+
+_BASE_ENVIRON['tor'] = os.path.join(
+  os.environ['HOME'], 'tor/src/or/tor')
+
 Authority = Node(tag="a", authority=1, relay=1, torrc="authority.tmpl")
 Relay = Node(tag="r", relay=1, torrc="relay.tmpl")
 Client = Node(tag="c", torrc="client.tmpl")
