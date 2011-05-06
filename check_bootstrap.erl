@@ -18,6 +18,19 @@ loop(Kids) ->
     {error,join_timeout}
   end.
 
+expect(Socket, Pat, Timeout, Msg) ->
+  receive
+    {tcp, Socket, Data} ->
+      case binary:match(Data, Pat) of
+        {_, _} -> Data;
+        nomatch -> exit({bad_resp,{Data},Msg})
+      end;
+    {tcp_closed, Socket} ->
+      exit({tcp_closed,{},Msg})
+  after Timeout ->
+    exit({recv_timeout,{},Msg})
+  end.
+
 check_status(Addr, Port) ->
   {ok, Socket} = gen_tcp:connect(Addr, Port, [
     binary,
@@ -26,9 +39,6 @@ check_status(Addr, Port) ->
     {active, true}
   ], 1000),
   ok = gen_tcp:send(Socket, "authenticate \"\"\n"),
-  receive
-    {tcp, Socket, _Data = <<"250 OK\r\n">>} -> exit(normal);
-    {tcp, Socket, Data} -> exit({bad_resp,{Data},[Addr,Port]})
-  after 1000 ->
-    exit({recv_timeout,{},[Addr,Port]})
-  end.
+  expect(Socket, <<"250 OK\r\n">>, 1000, [Addr, Port]),
+  ok = gen_tcp:send(Socket, "GETINFO status/bootstrap-phase\n"),
+  expect(Socket, <<"TAG=done">>, 1000, [Addr, Port]).
